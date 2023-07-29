@@ -166,7 +166,8 @@ bool SimpleEQAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SimpleEQAudioProcessor::createEditor()
 {
-    return new SimpleEQAudioProcessorEditor (*this);
+//    return new SimpleEQAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -181,6 +182,44 @@ void SimpleEQAudioProcessor::setStateInformation (const void* data, int sizeInBy
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::createParameterLayout(){
+    //Three Freq Band : low, high, peak :
+    //Low/High : control the cut off frequency and the slope of the cut off
+    //peak/parametric: control the center frequency, the gain and the quality meaning how narrow or how wide the peak is
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+    //low cut so default at the lowest freq
+    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCut Freq","LowCut Freq", juce::NormalisableRange<float>(20.f, 2000.f, 1.f, 1.f), 20.f));//skew to 1 means linear response (<1.0 then most of the step are response in the lower range, larger per step in higher end, >1.0 the other way around)
+    //high cut so default at the highest freq
+    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCut Freq","HighCut Freq", juce::NormalisableRange<float>(20.f, 2000.f, 1.f, 1.f), 2000.f));
+    //peak freq (central freq)
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Freq","Peak Freq", juce::NormalisableRange<float>(20.f, 2000.f, 1.f, 1.f), 750.f));
+    //peak Gain control from -24 to 24
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Gain","Peak Gain", juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f), 0.0f));
+    //peak quality, higher the value, narrower the peak is, lower the value, wider the peak is(q)
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Quality","Peak Quality", juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f), 1.0f));
+    
+    //slop of the cut off for low and high freq (dB/octave)
+    /*
+     The term dB/octave is often used in audio filters or equalizers to express the roll-off rate of the filter. For example, in a low-pass or high-pass filter, the roll-off rate is the speed at which the filter attenuates the signal strength beyond the cutoff frequency. If a filter is said to have a roll-off of -12 dB/octave, it means that for each octave away from the cutoff frequency, the signal is attenuated by an additional 12 dB.
+
+     Filters can have different roll-off rates. Common values are -6, -12, -18, -24 dB/octave, corresponding to first-order, second-order, third-order, and fourth-order filters, respectively. The higher the order, the steeper the roll-off, which means the filter is more "effective" at blocking frequencies outside its passband. However, higher order filters also introduce more phase distortion.
+     */
+    //using choice object here instead of float bc we are giving fix value 12 , 24 , etc..., high cut slope and low cut slope will be the same choices
+    juce::StringArray stringArray;
+    for(int i = 0; i<4; ++i){
+        juce::String tempStr;
+        tempStr<<(12 + 12 * i);
+        tempStr<<(" dB/Octave");
+        stringArray.add(tempStr);
+    }
+    
+    layout.add(std::make_unique<juce::AudioParameterChoice>("LowCut Slope", "LowCut Slope", stringArray, 0));
+    
+    layout.add(std::make_unique<juce::AudioParameterChoice>("HighCut Slope", "HighCut Slope", stringArray, 0));
+    
+    return layout;
 }
 
 //==============================================================================
